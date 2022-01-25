@@ -8,7 +8,7 @@ FYI I'm using to flash grbl onto an arduino as part of the protoneer-rpi cnc bec
 Instructions to update avrdude:
 -------------
 1) Get the avr tools
-```sudo apt install avrdude avr-libc gcc-avr make unzip```
+```sudo apt install avrdude avr-libc gcc-avr make unzip python3-lgpio```
 2) Get the avrdude-rpi code
 ```
 cd ~/src # or your favourite place for random git repos
