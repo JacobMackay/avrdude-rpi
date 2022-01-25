@@ -1,38 +1,52 @@
 #!/usr/bin/python
 
-import RPi.GPIO as GPIO
+import lgpio
 import sys, os, re, time, fcntl
+import errno
 
 fd = sys.stdin.fileno()
 fl = fcntl.fcntl(fd, fcntl.F_GETFL)
 fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
+lgpio.exceptions = False
 dtr = re.compile('.+TIOCM_DTR.+')
 start = time.time()
 
+h = lgpio.gpiochip_open(0)
+pin = 17 # GPIO17, pin number 11 on rpi4
+lgpio.gpio_claim_output(h, pin)
+lgpio.gpio_write(h, pin, 1)
+
 def reset():
-  pin = 22
-  GPIO.setup(pin, GPIO.OUT)
-  GPIO.output(pin, GPIO.LOW)
-  time.sleep(0.15)
-  GPIO.output(pin, GPIO.HIGH)
+  lgpio.gpio_write(h, pin, 0)
+  time.sleep(0.01)
+  lgpio.gpio_write(h, pin, 1)
+  time.sleep(0.01)
+  print("Reset done.")
 
 def process():
   while True:
     try:
       duration = time.time() - start
       input = sys.stdin.readline().strip()
+      if input is None: # == "":
+        input = sys.stdin.readline().strip()
       if dtr.match(input):
         reset()
         return
       elif duration > 5000:
+        print("avrdude-gpio-autoreset timed out.")
         return
-    except:
-      continue
+    except Exception as e:
+      if hasattr(e, 'errno'):
+       #	if e.errno != 11: # Ignore resource unavailable
+       if e.errno != 17: # Ignore resource unavailable
+         raise
+      else:
+        raise
 
 process()
-GPIO.cleanup()
+print ("avrdude-original: Using autoreset DTR on GPIO Pin " + str(pin))
+lgpio.gpiochip_close(h)
 print ("done with autoreset - ignore Broken pipe errors if Done uploading")
 exit
